@@ -19,7 +19,6 @@ class AADC(io.IOBase):
         self._upper = 65535
         self._pol = True
         self._last = None
-        self._cancel = False
         self._sreader = asyncio.StreamReader(self)
 
     def __iter__(self):
@@ -40,11 +39,6 @@ class AADC(io.IOBase):
             if arg & MP_STREAM_POLL_RD:
                 if self._pol ^ (self._lower <= self._adcread() <= self._upper):
                     ret |= MP_STREAM_POLL_RD
-
-                if self._cancel:
-                    self._cancel = False
-                    self._last = -1
-                    ret |= MP_STREAM_POLL_RD
         return ret
 
     # *** API ***
@@ -53,9 +47,6 @@ class AADC(io.IOBase):
     # Otherwise will pause until value is out of range
     def sense(self, normal):
         self._pol = normal
-
-    def cancel(self):
-        self._cancel = True
 
     def read_u16(self, last=False):
         if last:

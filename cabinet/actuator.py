@@ -1,5 +1,3 @@
-import enum
-
 import machine
 import uasyncio as asyncio
 import ulogging as logging
@@ -13,8 +11,8 @@ from lib.singleton import singleton
 ADC_PRECISION = 50
 
 # In milliseconds
-CURRENT_MONITORING_INTERVAL = 10
-CURRENT_SMA_WINDOW = 10
+CURRENT_MONITORING_INTERVAL = 40
+CURRENT_SMA_WINDOW = 11
 CURRENT_SENSOR_SHUNT_OHMS = 0.1
 
 MAX_ADC_VALUE = pow(2, 16)
@@ -28,20 +26,22 @@ def _convert_from_adc_to_actuators_extension(reading):
     return reading / MAX_ADC_VALUE * settings.ACTUATOR_LENGTH
 
 
-class MovingDirection(enum.Enum):
-    NONE = 'nowhere'
-    FORWARD = 'forward'
-    BACKWARD = 'backward'
+def enum(**enums):
+    return type('Enum', (), enums)
 
-    def reverse(self):
-        if self.value == self.NONE:
-            return self.NONE
-        elif self.name == self.FORWARD:
-            return self.BACKWARD
-        elif self.name == self.BACKWARD:
-            return self.FORWARD
-        else:
-            raise ValueError("Unknown state!")
+
+MovingDirection = enum(NONE='nowhere', FORWARD='forward', BACKWARD='backward')
+
+
+def _reverse_moving_direction(value):
+    if value == MovingDirection.NONE:
+        return MovingDirection.NONE
+    elif value == MovingDirection.FORWARD:
+        return MovingDirection.BACKWARD
+    elif value == MovingDirection.BACKWARD:
+        return MovingDirection.FORWARD
+    else:
+        raise ValueError("Unknown state!")
 
 
 @singleton
@@ -49,6 +49,7 @@ class Actuator:
     def __init__(self):
         self._moving_direction = MovingDirection.NONE
         self._log = logging.getLogger('Actuator')
+        self._log_obstacle = logging.getLogger('Actuator:ObstacleDetection')
         self._avoiding_obstacle = False
 
         self.position_adc_pin = machine.ADC(machine.Pin(settings.POSITION_ADC_PIN), atten=machine.ADC.ATTN_11DB)
@@ -62,39 +63,49 @@ class Actuator:
 
         i2c = machine.SoftI2C(machine.Pin(settings.ACTUATOR_CURRENT_SCL_PIN),
                               machine.Pin(settings.ACTUATOR_CURRENT_SDA_PIN))
-        self.current_sensor = INA219(CURRENT_SENSOR_SHUNT_OHMS, i2c, log_level=logging.DEBUG)
+        self.current_sensor = INA219(CURRENT_SENSOR_SHUNT_OHMS, i2c, log_level=logging.WARNING)
         self.current_sensor.configure()
 
     def start(self):
         asyncio.create_task(self._log_values())
-        asyncio.create_task(self._monitor_current())
 
     def is_extended(self):
         return self.position_adc_pin.read_u16() > ADC_PRECISION
 
     async def go_back(self):
         self._log.info("Going back")
-        self._go_back()
-        await self.position_adc(0, 0)
-        self._stop()
+        await self.go_to(0)
 
     async def go_to(self, target):
+        finished_move_event = asyncio.Event()
+        while not finished_move_event.is_set():
+            move_task = asyncio.create_task(self._go_to(target, finished_move_event))
+            target = await self._detect_obstacles(finished_move_event, move_task)
+
+            if target is None:
+                break
+
+        # We might or might not have been avoiding obstacles, but lets reset it to default value
+        # at the end of the move just as precaution so it is ready for future moves!
+        self._avoiding_obstacle = False
+
+    async def _go_to(self, target, finished_event):
         current_position = _convert_from_adc_to_actuators_extension(self.position_adc_pin.read_u16())
         where_to_move = MovingDirection.FORWARD if target > current_position else MovingDirection.BACKWARD
         adc_target = _convert_actuators_extension_to_adc(target)
 
-        self._log.info(f"Going to target {target}mm. Current position {current_position}mm ==> Moving {where_to_move.value.upper()}")
+        self._log.info(
+            f"Going to target {target}mm. Current position {current_position}mm ==> Moving {where_to_move.upper()}")
 
         if where_to_move == MovingDirection.FORWARD:
             self._go_forward()
         elif where_to_move == MovingDirection.BACKWARD:
             self._go_back()
 
-        result = await self.position_adc(adc_target - ADC_PRECISION, adc_target + ADC_PRECISION)
-
-        # -1 means that AADC waiting was canceled and some other routine took over the control in the meanwhile
-        if result != -1:
-            self._stop()
+        await self.position_adc(adc_target - ADC_PRECISION, adc_target + ADC_PRECISION)
+        self._log.debug(f"Finished the move {current_position}mm --> {target}mm")
+        self._stop()
+        finished_event.set()
 
     def _go_forward(self):
         self._moving_direction = MovingDirection.FORWARD
@@ -110,36 +121,41 @@ class Actuator:
         self.in1.off()
         self.in2.off()
 
-    async def _handle_obstacle(self):
-        self._log.warning(f"Obstacle detected! Reversing {settings.ACTUATOR_OBSTACLE_REVERSE_DISTANCE}mm.")
-        self._avoiding_obstacle = True
-
+    def _get_obstacle_target(self, current_move_direction):
         target_retraction = _convert_from_adc_to_actuators_extension(self.position_adc_pin.read_u16())
-        if self._moving_direction == MovingDirection.FORWARD:
+        if current_move_direction == MovingDirection.FORWARD:
             target_retraction -= settings.ACTUATOR_OBSTACLE_REVERSE_DISTANCE
-        elif self._moving_direction == MovingDirection.BACKWARD:
+        elif current_move_direction == MovingDirection.BACKWARD:
             target_retraction += settings.ACTUATOR_OBSTACLE_REVERSE_DISTANCE
         else:
-            self._log.error("We should be avoiding obstacle but we are not moving!")
+            self._log_obstacle.error("We should be avoiding obstacle but we are not moving!")
 
-        await self.go_to(target_retraction)
+        if target_retraction < 0:
+            return 0
 
-        self._avoiding_obstacle = False
-        self._log.info("Finished avoiding obstacle.")
+        if target_retraction > settings.ACTUATOR_LENGTH:
+            return settings.ACTUATOR_LENGTH
+
+        self._log_obstacle.info(f"Reversing {settings.ACTUATOR_OBSTACLE_REVERSE_DISTANCE}mm to {target_retraction}mm.")
+
+        return target_retraction
 
     def _is_in_range(self, reading):
         return _convert_actuators_extension_to_adc(
             self.target) + ADC_PRECISION >= reading >= _convert_actuators_extension_to_adc(self.target) - ADC_PRECISION
 
-    async def _monitor_current(self):
+    async def _detect_obstacles(self, finished_move_event, move_task):
         if not settings.ACTUATOR_OBSTACLE_CURRENT:
+            self._log_obstacle.warning("Obstacle current is not defined. No obstacle detection is happening.")
+            await finished_move_event.wait()
             return
 
         # SMA = Simple Moving Average
         sma_values = []
         sma_sum = 0
 
-        while True:
+        # We monitor the current only while actuator is moving which is signaled by this event
+        while not finished_move_event.is_set():
             current = self.current_sensor.current()
             sma_sum += current
             sma_values.append(current)
@@ -151,22 +167,27 @@ class Actuator:
             current_sma = sma_sum / CURRENT_SMA_WINDOW
 
             if current_sma > settings.ACTUATOR_OBSTACLE_CURRENT:
-                self.position_adc.cancel()  # We cancel any currently awaiting movements
+                self._log_obstacle.warning("Obstacle detected!")
+                self._log.debug(f"SMA(sum={sma_sum};values={sma_values})")
 
+                current_move_direction = self._moving_direction
+                move_task.cancel()  # We stop the current _go_to() coroutine
+                self._stop()  # and stop the movement
+
+                # When we are already doing the obstacle retraction and detect another
+                # obstacle, then it is highly probable that the drawer is stuck so lets just
+                # completely stop in order not to make anymore damage.
                 if self._avoiding_obstacle:
-                    self._log.warning("Obstacle is blocked! ==> Stopping")
-                    self._stop()
+                    self._log_obstacle.warning("Obstacle is blocked! ==> Stopping completely")
+                    return None  # As we are already stopped, lets just not return any new target
                 else:
-                    # We do not await the coroutine, because the obstacle detection needs to run alongside the obstacle
-                    # avoidance as it might run into another obstacle when backing off.
-                    # In which case the actuator will stop.
-                    asyncio.create_task(self._handle_obstacle())
-
-                    # We reset the SMA window in order to not get double triggering
-                    sma_values = []
-                    sma_sum = 0
+                    self._avoiding_obstacle = True
+                    await asyncio.sleep_ms(1000)
+                    return self._get_obstacle_target(current_move_direction)
 
             await asyncio.sleep_ms(CURRENT_MONITORING_INTERVAL)
+
+        return None  # None represents no new target
 
     async def _log_values(self):
         if not self._log.isEnabledFor(logging.DEBUG):

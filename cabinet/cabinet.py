@@ -17,14 +17,13 @@ class Cabinet:
         trigger_btn_pin = machine.Pin(settings.TRIGGER_PIN, machine.Pin.IN, machine.Pin.PULL_UP)
         self.trigger_btn = btn.Pushbutton(trigger_btn_pin)
 
-        fan_pwm_pin = machine.Pin(settings.FAN_PWM_PIN)
-        self.fan = Fan(fan_pwm_pin)
-
+        # fan_pwm_pin = machine.Pin(settings.FAN_PWM_PIN)
+        # self.fan = Fan(fan_pwm_pin)
 
     def start(self):
-        self.trigger_btn.press_func(self.fan.toggle_spee)
-        # self.trigger_btn.press_func(self.trigger_move)
-        # self.actuator.start()
+        # self.trigger_btn.press_func(self.fan.toggle_speed)
+        self.trigger_btn.press_func(self.trigger_move)
+        self.actuator.start()
 
     async def trigger_move(self):
         if self.moving:

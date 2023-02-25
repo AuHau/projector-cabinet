@@ -22,9 +22,9 @@ ACTUATOR_LENGTH = 200
 The limit current that when actuator reaches it is most likely that there
 is some obstacle. Therefore the actuator will stop and reverse a bit. 
 """
-ACTUATOR_OBSTACLE_CURRENT = 400
+ACTUATOR_OBSTACLE_CURRENT = 500
 
 """
 When obstacle is detected then how much actuator should reverse in millimeters.
 """
-ACTUATOR_OBSTACLE_REVERSE_DISTANCE = 20
+ACTUATOR_OBSTACLE_REVERSE_DISTANCE = 12
