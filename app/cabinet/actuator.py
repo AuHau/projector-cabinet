@@ -10,10 +10,13 @@ from cabinet import settings
 # In ADC reading unit; defines the target range
 ADC_PRECISION = 50
 
-# In milliseconds
-CURRENT_MONITORING_INTERVAL = 40
-CURRENT_SMA_WINDOW = 11
 CURRENT_SENSOR_SHUNT_OHMS = 0.1
+CURRENT_MONITORING_INTERVAL = 80  # In milliseconds
+CURRENT_SMA_WINDOW = 10  # Number of readings for the Simple Moving Average Window
+
+# Defines limit of max. values accepted to the SMA window
+# as a `ACTUATOR_OBSTACLE_CURRENT * CURRENT_MAX_VALUE_COEFFICIENT`
+CURRENT_MAX_VALUE_COEFFICIENT = 1.4
 
 MAX_ADC_VALUE = pow(2, 16)
 
@@ -160,6 +163,10 @@ class Actuator:
         # We monitor the current only while actuator is moving which is signaled by this event
         while not finished_move_event.is_set():
             current = self.current_sensor.current()
+
+            if current > CURRENT_MAX_VALUE_COEFFICIENT * settings.ACTUATOR_OBSTACLE_CURRENT:
+                current = CURRENT_MAX_VALUE_COEFFICIENT * settings.ACTUATOR_OBSTACLE_CURRENT
+
             sma_sum += current
             sma_values.append(current)
 
