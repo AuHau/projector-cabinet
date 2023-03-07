@@ -1,7 +1,3 @@
-# WiFi settings
-WIFI_SSID = "Wuhuuu"
-WIFI_PASS = "Kq4admD7EJJGDjl"
-
 # Pins settings
 TRIGGER_PIN = 32
 ACTUATOR_IN1_PIN = 26

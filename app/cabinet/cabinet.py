@@ -1,10 +1,9 @@
 import machine
+import btn
 
 from cabinet import settings
 from cabinet.actuator import Actuator
-from cabinet.fan import Fan
-from lib import btn
-from lib.singleton import singleton
+from utils import singleton
 
 
 @singleton

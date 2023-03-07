@@ -4,7 +4,7 @@
 # Released under the MIT License (MIT) - see LICENSE file
 
 import uasyncio as asyncio
-from . import launch, Delay_ms
+from utils import Delay_ms, launch
 
 try:
     from machine import TouchPad

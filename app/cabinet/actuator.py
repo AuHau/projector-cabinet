@@ -1,11 +1,11 @@
 import machine
 import uasyncio as asyncio
 import ulogging as logging
+import aadc
 
+from ina219 import INA219
+from utils import singleton
 from cabinet import settings
-from lib import aadc
-from lib.ina219 import INA219
-from lib.singleton import singleton
 
 # In ADC reading unit; defines the target range
 ADC_PRECISION = 50
@@ -80,6 +80,9 @@ class Actuator:
         finished_move_event = asyncio.Event()
         while not finished_move_event.is_set():
             move_task = asyncio.create_task(self._go_to(target, finished_move_event))
+
+            # _detect_obstacle cancels the move_task when obstacle is detected and specifies
+            # the new target value for the move
             target = await self._detect_obstacles(finished_move_event, move_task)
 
             if target is None:

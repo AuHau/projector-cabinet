@@ -1,3 +1,36 @@
+import uasyncio as asyncio
+from utime import ticks_add, ticks_diff, ticks_ms
+
+
+async def _g():
+    pass
+
+
+type_coro = type(_g())
+
+
+# If a callback is passed, run it and return.
+# If a coro is passed initiate it and return.
+# coros are passed by name i.e. not using function call syntax.
+def launch(func, tup_args):
+    res = func(*tup_args)
+    if isinstance(res, type_coro):
+        res = asyncio.create_task(res)
+    return res
+
+
+def singleton(cls):
+    instance = None
+
+    def getinstance(*args, **kwargs):
+        nonlocal instance
+        if instance is None:
+            instance = cls(*args, **kwargs)
+        return instance
+
+    return getinstance
+
+
 # delay_ms.py Now uses ThreadSafeFlag and has extra .wait() API
 # Usage:
 # from primitives import Delay_ms
@@ -5,15 +38,12 @@
 # Copyright (c) 2018-2022 Peter Hinch
 # Released under the MIT License (MIT) - see LICENSE file
 
-import uasyncio as asyncio
-from utime import ticks_add, ticks_diff, ticks_ms
-from . import launch
 
 class Delay_ms:
-
     class DummyTimer:  # Stand-in for the timer class. Can be cancelled.
         def cancel(self):
             pass
+
     _fake = DummyTimer()
 
     def __init__(self, func=None, args=(), duration=1000):
@@ -29,7 +59,7 @@ class Delay_ms:
         self.clear = self._tout.clear
         self.set = self._tout.set
         self._ttask = self._fake  # Timer task
-        self._mtask = asyncio.create_task(self._run()) #Main task
+        self._mtask = asyncio.create_task(self._run())  # Main task
 
     async def _run(self):
         while True:

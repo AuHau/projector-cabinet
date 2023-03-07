@@ -1,32 +1,43 @@
+import sys
+
 import uasyncio as asyncio
-import ulogging as logging
-import network
-from cabinet import cabinet, server, settings
+
+# TODO: Add support for connection timeout
+
+SRC_REPO = "https://github.com/AuHau/projector-cabinet"
+UPDATE_CHECK_INTERVAL = 30 * 60  # Once in half an hour
 
 
-async def main():
-    set_global_exception()  # Debug aid
-    logging.basicConfig(logging.DEBUG)
+def connect_to_wifi():
+    import time, network, gc, app.secrets as secrets
+    time.sleep(1)
     print("Bootstrapping")
-
-    print("=> Starting cabinet")
-    cab = cabinet.Cabinet()
-    cab.start()
+    print('=> Memory free', gc.mem_free())
 
     wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
     print(f"=> WiFi: {'connected - ' + wlan.ifconfig()[0] if wlan.isconnected() else 'NOT connected --> connecting'}")
     if not wlan.isconnected():
-        wlan.connect(settings.WIFI_SSID, settings.WIFI_PASS)
-        print("WiFi connected!")
+        wlan.active(True)
+        wlan.connect(secrets.WIFI_SSID, secrets.WIFI_PASS)
+        while not wlan.isconnected():
+            pass
 
-    print("=> Starting HTTP server")
-    server.start()
+    print('=> Network config:', wlan.ifconfig())
 
-    print("Finished bootstrap")
 
-    while True:
-        await asyncio.sleep(10)
+def check_for_update():
+    import machine, gc
+    from ota_updater import OTAUpdater
+
+    print('=> Checking for new firmware version')
+    ota_updater = OTAUpdater(SRC_REPO, main_dir='app', secrets_file="secrets.py")
+    has_updated = ota_updater.install_update_if_available()
+    if has_updated:
+        print('=> New version installed! Restarting!')
+        machine.reset()
+    else:
+        del ota_updater
+        gc.collect()
 
 
 def set_global_exception():
@@ -39,7 +50,29 @@ def set_global_exception():
     loop.set_exception_handler(handle_exception)
 
 
+async def periodically_check_for_update():
+    while True:
+        await asyncio.sleep(UPDATE_CHECK_INTERVAL)
+        check_for_update()
+
+
+def start_app():
+    print("Sys path: ", ",".join(sys.path))
+
+    from app.main import main
+    set_global_exception()  # Debug aid
+
+    asyncio.create_task(periodically_check_for_update())
+    return main()
+
+
+sys.path.append('/app')
+sys.path.append('/app/lib')
+
+connect_to_wifi()
+check_for_update()
+
 try:
-    asyncio.run(main())
+    asyncio.run(start_app())
 finally:
     asyncio.new_event_loop()  # Clear retained state

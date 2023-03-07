@@ -14,7 +14,7 @@ wlan.ifconfig()
 
 # Installing libraries
 import upip
-upip.install('micropython-ulogging')
+#upip.install('micropython-ulogging')
 # upip.install('uasyncio')
 upip.install('picoweb')
 upip.install('utemplate')
