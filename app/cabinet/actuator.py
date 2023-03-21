@@ -7,18 +7,20 @@ from ina219 import INA219
 from utils import singleton
 from cabinet import settings
 
+MAX_ADC_VALUE = pow(2, 16)
+
 # In ADC reading unit; defines the target range
-ADC_PRECISION = 70
+ADC_PRECISION = 100
 
 CURRENT_SENSOR_SHUNT_OHMS = 0.1
-CURRENT_MONITORING_INTERVAL = 80  # In milliseconds
+CURRENT_MONITORING_INTERVAL = 100  # In milliseconds
 CURRENT_SMA_WINDOW = 10  # Number of readings for the Simple Moving Average Window
 
 # Defines limit of max. values accepted to the SMA window
 # as a `ACTUATOR_OBSTACLE_CURRENT * CURRENT_MAX_VALUE_COEFFICIENT`
 CURRENT_MAX_VALUE_COEFFICIENT = 1.32
 
-MAX_ADC_VALUE = pow(2, 16)
+ACTUATOR_TIMEOUT = 20_000  # In milliseconds
 
 
 def _convert_actuators_extension_to_adc(goal):
@@ -79,22 +81,25 @@ class Actuator:
         self._log.info("Going back")
         await self.go_to(0)
 
-    # TODO: Add timeout, so incase the _go_to() miss the target it won't get stuck
     async def go_to(self, target):
-        finished_move_event = asyncio.Event()
-        while not finished_move_event.is_set():
-            move_task = asyncio.create_task(self._go_to(target, finished_move_event))
+        try:
+            finished_move_event = asyncio.Event()
+            while not finished_move_event.is_set():
+                move_task = asyncio.create_task(self._go_to(target, finished_move_event))
 
-            # _detect_obstacle cancels the move_task when obstacle is detected and specifies
-            # the new target value for the move
-            target = await self._detect_obstacles(finished_move_event, move_task)
+                # _detect_obstacle cancels the move_task when obstacle is detected and specifies
+                # the new target value for the move
+                target = await asyncio.wait_for_ms(self._detect_obstacles(finished_move_event, move_task),
+                                                   ACTUATOR_TIMEOUT)
 
-            if target is None:
-                break
-
-        # We might or might not have been avoiding obstacles, but lets reset it to default value
-        # at the end of the move just as precaution so it is ready for future moves!
-        self._avoiding_obstacle = False
+                if target is None:
+                    break
+        except TimeoutError:
+            self._log.warning("The go_to routine timed out!")
+        finally:
+            # We might or might not have been avoiding obstacles, but lets reset it to default value
+            # at the end of the move just as precaution, so it is ready for future moves!
+            self._avoiding_obstacle = False
 
     async def _go_to(self, target, finished_event):
         current_position = _convert_from_adc_to_actuators_extension(self.position_adc_pin.read_u16())
