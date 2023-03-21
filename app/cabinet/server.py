@@ -31,7 +31,7 @@ def homepage(req, resp):
         if "go" in req.form:
             data["message"] = "Actuator is going for it!"
             print("Triggering actuator")
-            uasyncio.run(cab.trigger_move())
+            uasyncio.run(cab.temp_trigger())
 
     data["current_target"] = persisted_settings.actuator_target
     yield from picoweb.start_response(resp, content_type="text/html")
