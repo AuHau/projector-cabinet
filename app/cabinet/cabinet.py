@@ -3,6 +3,7 @@ import btn
 
 from cabinet import settings
 from cabinet.actuator import Actuator
+from cabinet.settings import PersistentSettings
 from utils import singleton
 
 
@@ -10,7 +11,7 @@ from utils import singleton
 class Cabinet:
     def __init__(self):
         self.moving = False
-        self.target = 100
+        self.settings = PersistentSettings()
         self.actuator = Actuator()
 
         trigger_btn_pin = machine.Pin(settings.TRIGGER_PIN, machine.Pin.IN, machine.Pin.PULL_UP)
@@ -33,7 +34,7 @@ class Cabinet:
         if self.actuator.is_extended():
             await self.actuator.go_back()
         else:
-            await self.actuator.go_to(self.target)
+            await self.actuator.go_to(self.settings.actuator_target)
 
         print("Finished moving!")
         self.moving = False

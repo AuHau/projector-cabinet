@@ -8,7 +8,7 @@ from utils import singleton
 from cabinet import settings
 
 # In ADC reading unit; defines the target range
-ADC_PRECISION = 50
+ADC_PRECISION = 70
 
 CURRENT_SENSOR_SHUNT_OHMS = 0.1
 CURRENT_MONITORING_INTERVAL = 80  # In milliseconds
@@ -16,7 +16,7 @@ CURRENT_SMA_WINDOW = 10  # Number of readings for the Simple Moving Average Wind
 
 # Defines limit of max. values accepted to the SMA window
 # as a `ACTUATOR_OBSTACLE_CURRENT * CURRENT_MAX_VALUE_COEFFICIENT`
-CURRENT_MAX_VALUE_COEFFICIENT = 1.4
+CURRENT_MAX_VALUE_COEFFICIENT = 1.32
 
 MAX_ADC_VALUE = pow(2, 16)
 
@@ -79,6 +79,7 @@ class Actuator:
         self._log.info("Going back")
         await self.go_to(0)
 
+    # TODO: Add timeout, so incase the _go_to() miss the target it won't get stuck
     async def go_to(self, target):
         finished_move_event = asyncio.Event()
         while not finished_move_event.is_set():

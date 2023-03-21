@@ -62,7 +62,8 @@ def start_app():
     from app.main import main
     set_global_exception()  # Debug aid
 
-    asyncio.create_task(periodically_check_for_update())
+    # TODO: Enable on release
+    # asyncio.create_task(periodically_check_for_update())
     return main()
 
 
@@ -70,7 +71,8 @@ sys.path.append('/app')
 sys.path.append('/app/lib')
 
 connect_to_wifi()
-check_for_update()
+# TODO: Enable on release
+# check_for_update()
 
 try:
     asyncio.run(start_app())

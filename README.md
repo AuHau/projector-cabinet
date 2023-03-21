@@ -18,4 +18,5 @@ import upip
 # upip.install('uasyncio')
 upip.install('picoweb')
 upip.install('utemplate')
+upip.install('micropython-pathlib')
 ```
