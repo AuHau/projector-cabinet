@@ -9,16 +9,6 @@ from utils import singleton
 # Voltage which the ADC works with
 ADC_VOLTAGE = 3300
 
-# Number of samples that is taken for the current reading before reaching the final value
-NUMBER_OF_SAMPLES = 1484
-
-# How often is current retrieved
-READING_INTERVAL_MS = 500
-
-# Calibration value of the current sensor
-CALIBRATION = 0.0415
-
-CURRENT_SMA_WINDOW = 4  # Number of readings for the Simple Moving Average Window
 ADC_COUNTS = 1 << 10
 offset = ADC_COUNTS
 
@@ -32,6 +22,7 @@ class Projector:
 
     def __init__(self, cabinet):
         self._log = logging.getLogger('Projector')
+        self._settings = settings.PersistentSettings()
         self._current_adc_pin = machine.ADC(machine.Pin(settings.PROJECTOR_CURRENT_PIN), atten=machine.ADC.ATTN_11DB)
         self._cabinet = cabinet
         self._projector_on = False
@@ -43,7 +34,7 @@ class Projector:
         global offset
 
         sum = 0
-        for i in range(NUMBER_OF_SAMPLES):
+        for i in range(self._settings.projector_number_of_samples):
             sample = self._current_adc_pin.read_u16()
 
             # Digital low pass filter extracts the 2.5 V or 1.65 V dc offset,
@@ -57,8 +48,8 @@ class Projector:
             # 2) sum
             sum += sq
 
-        ratio = CALIBRATION * ((ADC_VOLTAGE / 1000.0) / (ADC_COUNTS))
-        return ratio * math.sqrt(sum / NUMBER_OF_SAMPLES)
+        ratio = self._settings.projector_calibration * ((ADC_VOLTAGE / 1000.0) / (ADC_COUNTS))
+        return ratio * math.sqrt(sum / self._settings.projector_number_of_samples)
 
     async def _reading_loop(self):
         # SMA = Simple Moving Average
@@ -73,10 +64,10 @@ class Projector:
             sma_values.append(current)
 
             # We have filled the SMA window size
-            if len(sma_values) > CURRENT_SMA_WINDOW:
+            if len(sma_values) > self._settings.projector_sma_window:
                 sma_sum -= sma_values.pop(0)
 
-            current_sma = sma_sum / CURRENT_SMA_WINDOW
+            current_sma = sma_sum / self._settings.projector_sma_window
 
             if self._projector_on and current_sma < settings.PROJECTOR_CURRENT_TURNED_ON:
                 self._log.info("Projector turned off")
@@ -87,4 +78,4 @@ class Projector:
                 self._projector_on = True
                 # self._cabinet.close()
 
-            await asyncio.sleep_ms(READING_INTERVAL_MS)
+            await asyncio.sleep_ms(self._settings.projector_reading_interval_ms)

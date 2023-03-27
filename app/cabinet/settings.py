@@ -26,25 +26,63 @@ In millimeters.
 """
 ACTUATOR_LENGTH = 200
 
-"""
-The limit current that when actuator reaches it is most likely that there
-is some obstacle. Therefore the actuator will stop and reverse a bit. 
-"""
-ACTUATOR_OBSTACLE_CURRENT = 450
-
-"""
-When obstacle is detected then how much actuator should reverse in millimeters.
-"""
-ACTUATOR_OBSTACLE_REVERSE_DISTANCE = 12
-
 PERSISTENT_SETTINGS_PATH = '/data/setting.json'
 
 
 @singleton
 class PersistentSettings:
+    fans_duty_cycle = 50
+    """
+    Duty cycle of fans in %  
+    """
+
     actuator_target = 100
     """
     Target to where the actuator will go when Cabinet is turned on. 
+    """
+
+    actuator_obstacle_sma_window = 10
+    """
+    Number of readings for the Simple Moving Average Window for the obstacle detection of actuator
+    """
+
+    actuator_obstacle_max_value_coefficient = 1.32
+    """
+    Defines limit of max. values accepted to the SMA window
+    as a `actuator_obstacle_current * actuator_obstacle_max_value_coefficient`
+    """
+
+    actuator_obstacle_current = 450
+    """
+    The limit current that when actuator reaches it is most likely that there
+    is some obstacle. Therefore the actuator will stop and reverse a bit. 
+    """
+
+    actuator_obstacle_reverse_distance = 12
+    """
+    When obstacle is detected then how much actuator should reverse in millimeters.
+    """
+
+    actuator_current_monitoring_interval = 100
+
+    projector_number_of_samples = 1484
+    """
+    Number of samples that is taken for the current reading before reaching the final value
+    """
+
+    projector_reading_interval_ms = 500
+    """
+    How often is current retrieved
+    """
+
+    projector_calibration = 0.0415
+    """
+    Calibration value of the current sensor
+    """
+
+    projector_sma_window = 4
+    """
+    Number of readings for the Simple Moving Average Window
     """
 
     def __init__(self):

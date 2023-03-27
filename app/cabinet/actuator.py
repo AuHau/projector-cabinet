@@ -7,20 +7,11 @@ from ina219 import INA219
 from utils import singleton
 from cabinet import settings
 
-MAX_ADC_VALUE = pow(2, 16)
-
 # In ADC reading unit; defines the target range
 ADC_PRECISION = 100
-
 CURRENT_SENSOR_SHUNT_OHMS = 0.1
-CURRENT_MONITORING_INTERVAL = 100  # In milliseconds
-CURRENT_SMA_WINDOW = 10  # Number of readings for the Simple Moving Average Window
-
-# Defines limit of max. values accepted to the SMA window
-# as a `ACTUATOR_OBSTACLE_CURRENT * CURRENT_MAX_VALUE_COEFFICIENT`
-CURRENT_MAX_VALUE_COEFFICIENT = 1.32
-
 ACTUATOR_TIMEOUT = 20_000  # In milliseconds
+MAX_ADC_VALUE = pow(2, 16)
 
 
 def _convert_actuators_extension_to_adc(goal):
@@ -55,6 +46,7 @@ class Actuator:
         self._moving_direction = MovingDirection.NONE
         self._log = logging.getLogger('Actuator')
         self._log_obstacle = logging.getLogger('Actuator:ObstacleDetection')
+        self._settings = settings.PersistentSettings()
         self._avoiding_obstacle = False
 
         self.position_adc_pin = machine.ADC(machine.Pin(settings.POSITION_ADC_PIN), atten=machine.ADC.ATTN_11DB)
@@ -136,9 +128,9 @@ class Actuator:
     def _get_obstacle_target(self, current_move_direction):
         target_retraction = _convert_from_adc_to_actuators_extension(self.position_adc_pin.read_u16())
         if current_move_direction == MovingDirection.FORWARD:
-            target_retraction -= settings.ACTUATOR_OBSTACLE_REVERSE_DISTANCE
+            target_retraction -= self._settings.actuator_obstacle_reverse_distance
         elif current_move_direction == MovingDirection.BACKWARD:
-            target_retraction += settings.ACTUATOR_OBSTACLE_REVERSE_DISTANCE
+            target_retraction += self._settings.actuator_obstacle_reverse_distance
         else:
             self._log_obstacle.error("We should be avoiding obstacle but we are not moving!")
 
@@ -148,7 +140,7 @@ class Actuator:
         if target_retraction > settings.ACTUATOR_LENGTH:
             return settings.ACTUATOR_LENGTH
 
-        self._log_obstacle.info(f"Reversing {settings.ACTUATOR_OBSTACLE_REVERSE_DISTANCE}mm to {target_retraction}mm.")
+        self._log_obstacle.info(f"Reversing {self._settings.actuator_obstacle_reverse_distance}mm to {target_retraction}mm.")
 
         return target_retraction
 
@@ -157,7 +149,7 @@ class Actuator:
             self.target) + ADC_PRECISION >= reading >= _convert_actuators_extension_to_adc(self.target) - ADC_PRECISION
 
     async def _detect_obstacles(self, finished_move_event, move_task):
-        if not settings.ACTUATOR_OBSTACLE_CURRENT:
+        if not self._settings.actuator_obstacle_current:
             self._log_obstacle.warning("Obstacle current is not defined. No obstacle detection is happening.")
             await finished_move_event.wait()
             return
@@ -169,20 +161,21 @@ class Actuator:
         # We monitor the current only while actuator is moving which is signaled by this event
         while not finished_move_event.is_set():
             current = self.current_sensor.current()
+            max_allowed_current = self._settings.actuator_obstacle_max_value_coefficient * self._settings.actuator_obstacle_current
 
-            if current > CURRENT_MAX_VALUE_COEFFICIENT * settings.ACTUATOR_OBSTACLE_CURRENT:
-                current = CURRENT_MAX_VALUE_COEFFICIENT * settings.ACTUATOR_OBSTACLE_CURRENT
+            if current > max_allowed_current:
+                current = max_allowed_current
 
             sma_sum += current
             sma_values.append(current)
 
             # We have filled the SMA window size
-            if len(sma_values) > CURRENT_SMA_WINDOW:
+            if len(sma_values) > self._settings.actuator_obstacle_sma_window:
                 sma_sum -= sma_values.pop(0)
 
-            current_sma = sma_sum / CURRENT_SMA_WINDOW
+            current_sma = sma_sum / self._settings.actuator_obstacle_sma_window
 
-            if current_sma > settings.ACTUATOR_OBSTACLE_CURRENT:
+            if current_sma > self._settings.actuator_obstacle_current:
                 self._log_obstacle.warning("Obstacle detected!")
                 self._log.debug(f"SMA(sum={sma_sum};values={sma_values})")
 
@@ -201,7 +194,7 @@ class Actuator:
                     await asyncio.sleep_ms(1000)
                     return self._get_obstacle_target(current_move_direction)
 
-            await asyncio.sleep_ms(CURRENT_MONITORING_INTERVAL)
+            await asyncio.sleep_ms(self._settings.actuator_current_monitoring_interval)
 
         return None  # None represents no new target
 

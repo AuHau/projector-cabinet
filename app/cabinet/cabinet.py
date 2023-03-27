@@ -27,10 +27,10 @@ class Cabinet:
 
     def start(self):
         # self.trigger_btn.press_func(self.fan.toggle_speed)
-        self.trigger_btn.press_func(self.temp_trigger)
+        self.trigger_btn.press_func(self.trigger)
         self.actuator.start()
 
-    async def temp_trigger(self):
+    async def trigger(self):
         if self.actuator.is_extended():
             await self.close()
         else:

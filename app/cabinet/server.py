@@ -1,41 +1,54 @@
 import uasyncio
 import utemplate.recompile
 import picoweb
+import machine
 from cabinet import cabinet, settings
 
+persisted_settings = settings.PersistentSettings()
 app = picoweb.WebApp(__name__)
 
 # TODO: Switch back to `utemplate.source` upon finishing development
 app.template_loader = utemplate.recompile.Loader(__name__.split(".", 1)[0], "templates")
 
+
 @app.route("/")
 def homepage(req, resp):
     cab = cabinet.Cabinet()
-    persisted_settings = settings.PersistentSettings()
-    data = {}
+    messages = []
 
     if req.method == "POST":
         yield from req.read_form_data()
 
-        if "target" in req.form:
-            new_target = int(req.form["target"])
+        for config_key, config_value_string in req.form.items():
+            try:
+                parsed = int(config_value_string)
+                setattr(persisted_settings, config_key, parsed)
+                print(f"Set {config_key} to value {parsed}")
+            except ValueError:
+                try:
+                    parsed = float(config_value_string.replace(",", "."))
+                    setattr(persisted_settings, config_key, parsed)
+                    print(f"Set {config_key} to value {parsed}")
+                except ValueError:
+                    messages.append(("danger", f"Error parsing config key {config_key} with value {config_value_string}"))
 
-            if new_target > settings.ACTUATOR_LENGTH:
-                raise ValueError("New target exceeded max. length!")
-
-            print(f"Updating to new target {new_target}mm")
-
-            persisted_settings.actuator_target = new_target
-            data["message"] = "Update successful!"
+        messages.append(("success", "Configuration updated!"))
+    else:
+        req.parse_qs()
 
         if "go" in req.form:
-            data["message"] = "Actuator is going for it!"
+            messages.append(("primary", "Actuator is going for it!"))
             print("Triggering actuator")
-            uasyncio.run(cab.temp_trigger())
+            uasyncio.create_task(cab.trigger())
 
-    data["current_target"] = persisted_settings.actuator_target
+        elif "reboot" in req.form:
+            messages.append(("warning", "Cabinet is restarting!"))
+            yield from picoweb.start_response(resp, content_type="text/html")
+            yield from app.render_template(resp, "homepage.tpl", (persisted_settings, messages))
+            machine.reset()
+
     yield from picoweb.start_response(resp, content_type="text/html")
-    yield from app.render_template(resp, "homepage.tpl", (data,))
+    yield from app.render_template(resp, "homepage.tpl", (persisted_settings, messages))
 
 
 def start():
