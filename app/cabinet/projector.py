@@ -52,7 +52,7 @@ class Projector:
         return ratio * math.sqrt(sum / self._settings.projector_number_of_samples)
 
     async def _reading_loop(self):
-        # SMA = Simple Moving Average
+        # SMA = Simple Moving AverageR
         sma_values = []
         sma_sum = 0
 
@@ -72,10 +72,10 @@ class Projector:
             if self._projector_on and current_sma < settings.PROJECTOR_CURRENT_TURNED_ON:
                 self._log.info("Projector turned off")
                 self._projector_on = False
-                # self._cabinet.close()
+                # self._cabinet.turn_off()
             elif not self._projector_on and current_sma >= settings.PROJECTOR_CURRENT_TURNED_ON:
                 self._log.info("Projector turned on")
                 self._projector_on = True
-                # self._cabinet.close()
+                # self._cabinet.turn_on()
 
             await asyncio.sleep_ms(self._settings.projector_reading_interval_ms)
