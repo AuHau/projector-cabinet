@@ -7,8 +7,9 @@ from cabinet import cabinet, settings
 persisted_settings = settings.PersistentSettings()
 app = picoweb.WebApp(__name__)
 
-# TODO: Switch back to `utemplate.source` upon finishing development
-app.template_loader = utemplate.recompile.Loader(__name__.split(".", 1)[0], "templates")
+#  `utemplate.source` package compiles the templates and later on changes are not visible
+#  for development there is `utemplate.recompile` package which is more compute and memory intense though
+app.template_loader = utemplate.source.Loader(__name__.split(".", 1)[0], "templates")
 
 
 @app.route("/")

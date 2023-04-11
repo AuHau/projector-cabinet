@@ -71,9 +71,14 @@ class Actuator:
 
     async def go_back(self):
         self._log.info("Going back")
-        await self.go_to(0)
+        return await self.go_to(0)
 
     async def go_to(self, target):
+        """
+        Returns boolean which indicates if actuator reached the original target (true)
+        or had to do obstacle avoidance (false)
+        """
+        did_obstacle_avoidence = False
         try:
             finished_move_event = asyncio.Event()
             while not finished_move_event.is_set():
@@ -86,12 +91,16 @@ class Actuator:
 
                 if target is None:
                     break
-        except TimeoutError:
+                else:
+                    did_obstacle_avoidence = True
+        except asyncio.TimeoutError:
             self._log.warning("The go_to routine timed out!")
         finally:
             # We might or might not have been avoiding obstacles, but lets reset it to default value
             # at the end of the move just as precaution, so it is ready for future moves!
             self._avoiding_obstacle = False
+
+        return not did_obstacle_avoidence
 
     async def _go_to(self, target, finished_event):
         current_position = _convert_from_adc_to_actuators_extension(self.position_adc_pin.read_u16())

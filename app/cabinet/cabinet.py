@@ -28,6 +28,9 @@ class Cabinet:
         self.trigger_btn.press_func(self.trigger)
         self._actuator.start()
 
+    def is_on(self):
+        return self._actuator.is_extended()
+
     async def trigger(self):
         if self._actuator.is_extended():
             await self.turn_off()
@@ -42,10 +45,16 @@ class Cabinet:
         self._log.info("Opening cabinet")
         self._moving = True
         self._usb_trigger.on()
-        await self._actuator.go_to(self._settings.actuator_target)
+        successful = await self._actuator.go_to(self._settings.actuator_target)
         self._moving = False
-        self._log.info("Successfully opened cabinet")
         self._fan.on()
+
+        if successful:
+            self._log.info("Successfully opened cabinet")
+        else:
+            self._log.warning("Actuator did not reach the target! Had to stop before.")
+
+        return successful
 
     async def turn_off(self):
         if self._moving:
@@ -55,7 +64,13 @@ class Cabinet:
         self._log.info("Closing cabinet")
         self._moving = True
         self._usb_trigger.off()
-        await self._actuator.go_back()
+        successful = await self._actuator.go_back()
         self._moving = False
-        self._log.info("Successfully closed cabinet")
         self._fan.off()
+
+        if successful:
+            self._log.info("Successfully closed cabinet")
+        else:
+            self._log.warning("Actuator did not reach the target! Had to stop before.")
+
+        return successful
