@@ -3,7 +3,8 @@ import ulogging as logging
 import gc
 
 async def main():
-    logging.basicConfig(logging.DEBUG)
+    from app import secrets
+    logging.basicConfig(logging.DEBUG, syslog=(secrets.SYSLOG_HOST, secrets.SYSLOG_PORT))
 
     print("=> Starting MQTT")
     print('=> Memory free', gc.mem_free())
