@@ -18,7 +18,8 @@ def connect_to_wifi():
     print(f"=> WiFi: {'connected - ' + wlan.ifconfig()[0] if wlan.isconnected() else 'NOT connected --> connecting'}")
     if not wlan.isconnected():
         wlan.active(True)
-        wlan.config(hostname='projector_cabinet')
+        time.sleep(1)
+        wlan.config(dhcp_hostname='projector_cabinet')
         wlan.connect(secrets.WIFI_SSID, secrets.WIFI_PASS)
         while not wlan.isconnected():
             pass

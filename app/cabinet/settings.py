@@ -3,7 +3,7 @@ import os
 from utils import singleton
 
 # Pins settings
-TRIGGER_PIN = 32
+TEMP_PIN = 13
 USB_TRIGGER_PIN = 33
 ACTUATOR_IN1_PIN = 26
 ACTUATOR_IN2_PIN = 27
