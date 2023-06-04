@@ -21,12 +21,12 @@ class OTAUpdater:
     def __del__(self):
         self.http_client = None
 
-    def check_for_update_to_install_during_next_reboot(self) -> bool:
+    def check_for_update(self, mark_for_install=False) -> bool:
         """Function which will check the GitHub repo if there is a newer version available.
 
         This method expects an active internet connection and will compare the current
         version with the latest version available on GitHub.
-        If a newer version is available, the file 'next/.version' will be created
+        If a newer version is available and mark_for_install is True, the file 'next/.version' will be created
         and you need to call machine.reset(). A reset is needed as the installation process
         takes up a lot of memory (mostly due to the http stack)
 
@@ -35,29 +35,23 @@ class OTAUpdater:
             bool: true if a new version is available, false otherwise
         """
 
-        (current_version, latest_version) = self._check_for_new_version()
+        (current_version, latest_version) = self.get_versions()
         if latest_version is not None and latest_version > current_version:
-            print('New version available, will download and install on next reboot')
-            self._create_new_version_file(latest_version)
+            print(f'New version available{" and will be installed on reboot" if mark_for_install else ""}')
+            mark_for_install and self._create_new_version_file(latest_version)
             return True
 
         return False
 
-    def install_update_if_available_after_boot(self, ssid, password) -> bool:
-        """This method will install the latest version if out-of-date after boot.
-
-        This method, which should be called first thing after booting, will check if the
-        next/.version' file exists.
-
-        - If yes, it initializes the WIFI connection, downloads the latest version and installs it
-        - If no, the WIFI connection is not initialized as no new known version is available
+    def install_if_marked(self) -> bool:
+        """
+        This method will install the latest version if there is scheduled update in the `next/.version` file.
         """
 
         if self.new_version_dir in os.listdir(self.module):
             if '.version' in os.listdir(self.modulepath(self.new_version_dir)):
                 latest_version = self.get_version(self.modulepath(self.new_version_dir), '.version')
                 print('New update found: ', latest_version)
-                OTAUpdater._using_network(ssid, password)
                 self.install_update_if_available()
                 return True
 
@@ -76,7 +70,7 @@ class OTAUpdater:
             bool: true if a new version is available, false otherwise
         """
 
-        (current_version, latest_version) = self._check_for_new_version()
+        (current_version, latest_version) = self.get_versions()
 
         if latest_version is None:
             return False
@@ -92,19 +86,10 @@ class OTAUpdater:
 
         return False
 
-    @staticmethod
-    def _using_network(ssid, password):
-        import network
-        sta_if = network.WLAN(network.STA_IF)
-        if not sta_if.isconnected():
-            print('connecting to network...')
-            sta_if.active(True)
-            sta_if.connect(ssid, password)
-            while not sta_if.isconnected():
-                pass
-        print('network config:', sta_if.ifconfig())
-
-    def _check_for_new_version(self):
+    def get_versions(self):
+        """
+        Method will fetch current and latest versions
+        """
         current_version = self.get_version(self.modulepath(self.main_dir))
         latest_version = self.get_latest_version()
 

@@ -33,7 +33,7 @@ def check_for_update():
 
     print('=> Checking for new firmware version')
     ota_updater = OTAUpdater(SRC_REPO, main_dir='app', secrets_file="secrets.py")
-    has_updated = ota_updater.install_update_if_available()
+    has_updated = ota_updater.install_if_marked()
     if has_updated:
         print('=> New version installed! Restarting!')
         machine.reset()
@@ -52,20 +52,12 @@ def set_global_exception():
     loop.set_exception_handler(handle_exception)
 
 
-async def periodically_check_for_update():
-    while True:
-        await asyncio.sleep(UPDATE_CHECK_INTERVAL)
-        check_for_update()
-
-
 def start_app():
     print("Sys path: ", ",".join(sys.path))
 
     from app.main import main
     set_global_exception()  # Debug aid
 
-    # TODO: Enable on release
-    # asyncio.create_task(periodically_check_for_update())
     return main()
 
 
@@ -73,8 +65,7 @@ sys.path.append('/app')
 sys.path.append('/app/lib')
 
 connect_to_wifi()
-# TODO: Enable on release
-# check_for_update()
+check_for_update()
 
 try:
     asyncio.run(start_app())
