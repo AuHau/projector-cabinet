@@ -2,7 +2,7 @@ import ujson, machine
 import ulogging as logging
 import uasyncio as asyncio
 from mqtt_as import MQTTClient, config
-from ota_updater import OTAUpdater
+from uota import UOta
 
 from cabinet import cabinet
 from utils import singleton
@@ -19,7 +19,7 @@ DEVICE_DEFINITION = {
 
 TEMP_STATE_INTERVAL = 2000
 #FW_VERSIONS_STATE_INTERVAL = 15*60*1000
-FW_VERSIONS_STATE_INTERVAL = 3000
+FW_VERSIONS_STATE_INTERVAL = 60_000
 CABINET_AVAILABILITY_TOPIC = "projector_cabinet/availability"
 
 # Main on/off cabinet switch
@@ -55,7 +55,7 @@ class MQTT:
         self._client = MQTTClient(config, self._logger)
         self._cabinet = cabinet.Cabinet()
         self._state_loops = []
-        self._updater = OTAUpdater(SRC_REPO, main_dir='app', secrets_file="secrets.py")
+        self._updater = UOta(SRC_REPO, logger=logging.getLogger('UOta'))
         self._topics_commands_mapping = {
             SWITCH_COMMAND_TOPIC: self._handle_switch_command,
             FW_COMMAND_TOPIC: self._handle_fw_command
@@ -72,7 +72,8 @@ class MQTT:
         await self._client.publish(SWITCH_STATE_TOPIC, "ON" if self._cabinet.is_on() else "OFF")
 
     async def _handle_fw_command(self, msg):
-        if msg == "install" and self._updater.check_for_update(True):
+        self._logger.info("Got command to install new firmware!")
+        if msg == "install" and self._updater.download_update():
             self._logger.info('Received install new firmware command and new version is available. Marking for install and restarting.')
             machine.reset()
 
@@ -103,6 +104,7 @@ class MQTT:
 
             await self._announce_service_discovery()
             await self._client.subscribe(SWITCH_COMMAND_TOPIC, 1)
+            await self._client.subscribe(FW_COMMAND_TOPIC, 1)
             await self._client.publish(CABINET_AVAILABILITY_TOPIC, "online")
             await self._client.publish(SWITCH_STATE_TOPIC, "ON" if self._cabinet.is_on() else "OFF")
             self._state_loops.append(asyncio.create_task(self._read_temp()))
@@ -115,10 +117,9 @@ class MQTT:
 
     async def _read_fw_version(self):  # poll if new fw update is available
         while True:
-            (current_version, latest_version) = self._updater.get_versions()
             json_payload = ujson.dumps({
-                "installed_version": current_version,
-                "latest_version": latest_version,
+                "installed_version": self._updater.get_current_version(),
+                "latest_version": self._updater.get_latest_version(),
             })
             await self._client.publish(FW_STATE_TOPIC, json_payload)
             await asyncio.sleep_ms(FW_VERSIONS_STATE_INTERVAL)

@@ -20,11 +20,11 @@ async def main():
     gc.collect()
     print('=> Memory free', gc.mem_free())
 
-    print("=> Starting HTTP server")
-    from cabinet import server
-    server.start()
-    gc.collect()
-    print('=> Memory free', gc.mem_free())
+    # print("=> Starting HTTP server")
+    # from cabinet import server
+    # server.start()
+    # gc.collect()
+    # print('=> Memory free', gc.mem_free())
 
     print("Finished bootstrap")
 

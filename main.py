@@ -2,10 +2,7 @@ import sys
 
 import uasyncio as asyncio
 
-# TODO: Add support for connection timeout
-
-SRC_REPO = "https://github.com/AuHau/projector-cabinet"
-UPDATE_CHECK_INTERVAL = 30 * 60  # Once in half an hour
+OTA_REPO = "https://github.com/AuHau/projector-cabinet"
 
 
 def connect_to_wifi():
@@ -14,12 +11,12 @@ def connect_to_wifi():
     print("Bootstrapping")
     print('=> Memory free', gc.mem_free())
 
+    # network.hostname('projector_cabinet')
     wlan = network.WLAN(network.STA_IF)
     print(f"=> WiFi: {'connected - ' + wlan.ifconfig()[0] if wlan.isconnected() else 'NOT connected --> connecting'}")
     if not wlan.isconnected():
         wlan.active(True)
         time.sleep(1)
-        wlan.config(dhcp_hostname='projector_cabinet')
         wlan.connect(secrets.WIFI_SSID, secrets.WIFI_PASS)
         while not wlan.isconnected():
             pass
@@ -29,16 +26,17 @@ def connect_to_wifi():
 
 def check_for_update():
     import machine, gc
-    from ota_updater import OTAUpdater
+    import ulogging as logging
+    from uota import UOta
 
-    print('=> Checking for new firmware version')
-    ota_updater = OTAUpdater(SRC_REPO, main_dir='app', secrets_file="secrets.py")
-    has_updated = ota_updater.install_if_marked()
+    print('=> Checking if new firmware version can be installed')
+    ota = UOta(OTA_REPO, logger=logging.getLogger('UOta'))
+    has_updated = ota.install_new_firmware()
     if has_updated:
         print('=> New version installed! Restarting!')
         machine.reset()
     else:
-        del ota_updater
+        del ota
         gc.collect()
 
 
