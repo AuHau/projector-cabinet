@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/AuHau/projector-cabinet/compare/v0.1.2...v0.1.3) (2023-06-17)
+
+
+### Bug Fixes
+
+* builder permissions ([5d11fdc](https://github.com/AuHau/projector-cabinet/commit/5d11fdcc5532be678156ee59be545ae5d648aa9c))
+
 ## [0.1.2](https://github.com/AuHau/projector-cabinet/compare/v0.1.1...v0.1.2) (2023-06-17)
 
 
