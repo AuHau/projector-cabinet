@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/AuHau/projector-cabinet/compare/v0.1.0...v0.1.1) (2023-06-17)
+
+
+### Bug Fixes
+
+* merge release jobs ([f4d438b](https://github.com/AuHau/projector-cabinet/commit/f4d438b765b90e49bc31064a78cd9a800a9f87ea))
+
 ## [0.1.0](https://github.com/AuHau/projector-cabinet/compare/0.0.1...v0.1.0) (2023-06-17)
 
 
