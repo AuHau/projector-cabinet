@@ -10,9 +10,13 @@ on:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
     steps:
-      - uses: GoogleCloudPlatform/release-please-action@v2
+      - uses: GoogleCloudPlatform/release-please-action@v3
         with:
-          token: ${{ secrets.GH_PAT }}
           release-type: python
           bump-minor-pre-major: true
