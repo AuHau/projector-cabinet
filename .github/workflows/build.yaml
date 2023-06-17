@@ -5,7 +5,7 @@ on:
     types: [published]
 
 jobs:
-  sreleaser:
+  releaser:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -27,4 +27,4 @@ jobs:
           upload_url: ${{ github.event.release.upload_url }}
           asset_path: source.tar.gz
           asset_name: mpy build source
-          asset_content_type: application/octet-stream
+          asset_content_type: application/gzip
