@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/AuHau/projector-cabinet/compare/v0.1.4...v0.1.5) (2023-06-17)
+
+
+### Bug Fixes
+
+* use different tar compress ([04af35d](https://github.com/AuHau/projector-cabinet/commit/04af35d7a5fc833fdee7b87c0004e570961c3dae))
+
 ## [0.1.4](https://github.com/AuHau/projector-cabinet/compare/v0.1.3...v0.1.4) (2023-06-17)
 
 
