@@ -1,5 +1,3 @@
-# On each new commit to master, create/update a PR with release
-# automatically bumps version and creates changelog as per conventional commits
 name: Release Please
 
 on:
@@ -20,3 +18,29 @@ jobs:
         with:
           release-type: simple
           bump-minor-pre-major: true
+
+  mpy-builder:
+    runs-on: ubuntu-latest
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - run: pip install mpy-cross
+      - run: |
+          find . -type f -name '*.py' -exec mpy-cross "{}" \;
+          find . -type f -name '*.py' -exec rm "{}" \;
+          rm -rf .git _docs .gitignore .github README.md
+          tar -czf source.tar.gz *
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-please.outputs.upload_url }}
+          asset_path: source.tar.gz
+          asset_name: mpy build source
+          asset_content_type: application/gzip
