@@ -1,7 +1,6 @@
 import machine
 import onewire
 import ds18x20
-import btn
 import ulogging as logging
 import uasyncio as asyncio
 
@@ -61,7 +60,7 @@ class Cabinet:
         self._usb_trigger.on()
         successful = await self._actuator.go_to(self._settings.actuator_target)
         self._moving = False
-        self._fan.on()
+        self._fan.set(50)
 
         if successful:
             self._log.info("Successfully opened cabinet")

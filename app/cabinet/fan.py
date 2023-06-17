@@ -16,10 +16,11 @@ class Fan:
 
         fan_pin = machine.Pin(settings.FAN_PWM_PIN, machine.Pin.OUT)
         self._pwm = machine.PWM(fan_pin, freq=PWM_FREQ)
-        self._settings = settings.PersistentSettings()
+        self.duty_cycle = 0
 
-    def on(self):
-        self._pwm.duty_u16((self._settings.fans_duty_cycle * MAX_DUTY_VALUE)//100)
+    def set(self, duty_cycle):
+        self.duty_cycle = duty_cycle
+        self._pwm.duty_u16((self.duty_cycle * MAX_DUTY_VALUE)//100)
 
     def off(self):
         self._pwm.duty_u16(0)

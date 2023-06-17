@@ -4,7 +4,7 @@ import uasyncio as asyncio
 from mqtt_as import MQTTClient, config
 from uota import UOta
 
-from cabinet import cabinet, settings
+from cabinet import cabinet, settings, fan
 from utils import singleton
 from app import secrets
 
@@ -18,7 +18,8 @@ DEVICE_DEFINITION = {
 }
 
 TEMP_STATE_INTERVAL = 2000
-#FW_VERSIONS_STATE_INTERVAL = 15*60*1000
+FAN_STATE_INTERVAL = 2000
+# FW_VERSIONS_STATE_INTERVAL = 15*60*1000
 FW_VERSIONS_STATE_INTERVAL = 60_000
 CABINET_AVAILABILITY_TOPIC = "projector_cabinet/availability"
 
@@ -36,6 +37,13 @@ TARGET_DISCOVERY_TOPIC = "homeassistant/number/projector_cabinet/target/config"
 TARGET_STATE_TOPIC = "projector_cabinet/target/state"
 TARGET_COMMAND_TOPIC = "projector_cabinet/target/set"
 
+# Projector's fans
+FANS_DISCOVERY_TOPIC = "homeassistant/fan/projector_cabinet/fans/config"
+FANS_POWER_STATE_TOPIC = "projector_cabinet/fans/state"
+FANS_SPEED_STATE_TOPIC = "projector_cabinet/fans/speed/state"
+FANS_COMMAND_TOPIC = "projector_cabinet/fans/set"
+FANS_SPEED_COMMAND_TOPIC = "projector_cabinet/fans/speed/set"
+
 # Firmware update
 FW_DISCOVERY_TOPIC = "homeassistant/update/projector_cabinet/fw/config"
 FW_STATE_TOPIC = "projector_cabinet/fw/state"
@@ -49,23 +57,31 @@ config['user'] = secrets.MQTT_USER
 config['password'] = secrets.MQTT_PASS
 config["queue_len"] = 1  # Use event interface with default queue size
 config["will"] = (
-    CABINET_AVAILABILITY_TOPIC, "offline", True, 0)  # This to let know Home Assistant that this device dropped from MQTT
+    CABINET_AVAILABILITY_TOPIC, "offline", True,
+    0)  # This to let know Home Assistant that this device dropped from MQTT
 
 
 @singleton
 class MQTT:
     def __init__(self):
+        # MQTT internals
         self._logger = logging.getLogger('MQTT')
         MQTTClient.DEBUG = True
         self._client = MQTTClient(config, self._logger)
-        self._cabinet = cabinet.Cabinet()
         self._state_loops = []
-        self._updater = UOta(SRC_REPO, logger=logging.getLogger('UOta'))
-        self._settings = settings.PersistentSettings()
         self._topics_commands_mapping = {
             SWITCH_COMMAND_TOPIC: self._handle_switch_command,
-            FW_COMMAND_TOPIC: self._handle_fw_command
+            FW_COMMAND_TOPIC: self._handle_fw_command,
+            TARGET_COMMAND_TOPIC: self._handle_target_command,
+            FANS_COMMAND_TOPIC: self._handle_fans_command,
+            FANS_SPEED_COMMAND_TOPIC: self._handle_fans_command,
         }
+
+        # Cabinet state related components
+        self._cabinet = cabinet.Cabinet()
+        self._updater = UOta(SRC_REPO, logger=logging.getLogger('UOta'))
+        self._settings = settings.PersistentSettings()
+        self._fan = fan.Fan()
 
     async def _handle_switch_command(self, msg):
         if msg == "ON":
@@ -80,12 +96,24 @@ class MQTT:
     async def _handle_fw_command(self, msg):
         self._logger.info("Got command to install new firmware!")
         if msg == "install" and self._updater.download_update():
-            self._logger.info('Received install new firmware command and new version is available. Marking for install and restarting.')
+            self._logger.info(
+                'Received install new firmware command and new version is available. Marking for install and restarting.')
             machine.reset()
 
     async def _handle_target_command(self, msg):
         self._logger.info(f"Setting new extension target: {msg}cm")
         self._settings.actuator_target = int(msg)
+
+    async def _handle_fans_command(self, msg):
+        if msg == "ON":
+            self._fan.set(50)  # We don't persist duty cycle so we don't know what was the speed before turning it off
+        elif msg == "OFF":
+            self._fan.off()
+        elif "speed" in msg:
+            obj = ujson.loads(msg)
+            self._fan.set(int(obj["speed"]))
+        else:
+            self._logger.error(f"Unknown fan command {msg}")
 
     async def _messages(self):
         async for topic, msg, retained in self._client.queue:
@@ -116,16 +144,25 @@ class MQTT:
             await self._client.subscribe(SWITCH_COMMAND_TOPIC, 1)
             await self._client.subscribe(FW_COMMAND_TOPIC, 1)
             await self._client.subscribe(TARGET_COMMAND_TOPIC, 1)
+            await self._client.subscribe(FANS_COMMAND_TOPIC, 1)
+            await self._client.subscribe(FANS_SPEED_COMMAND_TOPIC, 1)
             await self._client.publish(CABINET_AVAILABILITY_TOPIC, "online")
             await self._client.publish(SWITCH_STATE_TOPIC, "ON" if self._cabinet.is_on() else "OFF")
-            await self._client.publish(TARGET_STATE_TOPIC, self._settings.actuator_target)
+            await self._client.publish(TARGET_STATE_TOPIC, str(self._settings.actuator_target))
             self._state_loops.append(asyncio.create_task(self._read_temp()))
             self._state_loops.append(asyncio.create_task(self._read_fw_version()))
+            self._state_loops.append(asyncio.create_task(self._read_fans_duty_cycle()))
 
     async def _read_temp(self):  # send temperature data
         while True:
             await self._client.publish(TEMP_STATE_TOPIC, str(await self._cabinet.get_temp()))
             await asyncio.sleep_ms(TEMP_STATE_INTERVAL)
+
+    async def _read_fans_duty_cycle(self):  # send fans data
+        while True:
+            await self._client.publish(FANS_POWER_STATE_TOPIC, "ON" if self._fan.duty_cycle > 0 else "OFF")
+            await self._client.publish(FANS_SPEED_STATE_TOPIC, str(self._fan.duty_cycle))
+            await asyncio.sleep_ms(FAN_STATE_INTERVAL)
 
     async def _read_fw_version(self):  # poll if new fw update is available
         while True:
@@ -168,6 +205,7 @@ class MQTT:
             "min": "0",
             "max": "200",
             "step": "1",
+            "mode": "box",
             "unit_of_measurement": "cm",
             "state_topic": TARGET_STATE_TOPIC,
             "command_topic": TARGET_COMMAND_TOPIC,
@@ -176,6 +214,22 @@ class MQTT:
         }
         self._logger.info(f'Announcing cabinet capability on topic: {TARGET_DISCOVERY_TOPIC}')
         await self._client.publish(TARGET_DISCOVERY_TOPIC, ujson.dumps(target_discovery_payload))
+
+        fans_discovery_payload = {
+            "name": "Cabinet fans",
+            "unique_id": "projector_cabinet_fans",
+            "percentage_state_topic": FANS_SPEED_STATE_TOPIC,
+            "percentage_command_topic": FANS_SPEED_COMMAND_TOPIC,
+            "percentage_command_template": '{ "speed": "{{ value }}"}',
+            "speed_range_min": 1,
+            "speed_range_max": 100,
+            "state_topic": FANS_POWER_STATE_TOPIC,
+            "command_topic": FANS_COMMAND_TOPIC,
+            "availability_topic": CABINET_AVAILABILITY_TOPIC,
+            "device": DEVICE_DEFINITION,
+        }
+        self._logger.info(f'Announcing cabinet capability on topic: {FANS_DISCOVERY_TOPIC}')
+        await self._client.publish(FANS_DISCOVERY_TOPIC, ujson.dumps(fans_discovery_payload))
 
         update_discovery_payload = {
             "name": "Cabinet's device update",

@@ -13,12 +13,6 @@ ACTUATOR_CURRENT_SCL_PIN = 22
 ACTUATOR_CURRENT_SDA_PIN = 21
 FAN_PWM_PIN = 14
 
-PROJECTOR_CURRENT_TURNED_ON = 0.3
-"""
-Current that the projects draw when it is turned on.
-In Amperes
-"""
-
 """
 Defines the maximal extension of the actuator's arm.
 In millimeters.
@@ -30,11 +24,6 @@ PERSISTENT_SETTINGS_PATH = '/data/setting.json'
 
 @singleton
 class PersistentSettings:
-    fans_duty_cycle = 50
-    """
-    Duty cycle of fans in %  
-    """
-
     actuator_target = 100
     """
     Target to where the actuator will go when Cabinet is turned on. 
@@ -100,8 +89,11 @@ class PersistentSettings:
     def __setattr__(self, key, value):
         super().__setattr__(key, value)
 
-        if self._booting or key == '_booting':
-            return
+        try:
+            if self._booting or key == '_booting':
+                return
+        except AttributeError:
+            pass
 
         try:
             os.mkdir('/data')
