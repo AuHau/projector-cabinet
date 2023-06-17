@@ -46,7 +46,7 @@ class UOta:
         Check available free space in filesystem and return True/False if there is enough free space
         or not.
 
-        min_free_space is measured in kB
+        min_free_space is measured in bytes
         """
         if not any([isinstance(min_free_space, int), isinstance(min_free_space, float)]):
             self.logger.warning('min_free_space must be an int or float')
@@ -55,7 +55,7 @@ class UOta:
         fs_stat = uos.statvfs('/')
         block_sz = fs_stat[0]
         free_blocks = fs_stat[3]
-        free_kb = block_sz * free_blocks / 1024
+        free_kb = block_sz * free_blocks
         return free_kb >= min_free_space
 
     def get_current_version(self):
@@ -181,7 +181,7 @@ class UOta:
                         if not buf:
                             break
                         written_bytes += f_out.write(buf)
-                    self.logger.info(f'file {file_name} ({written_bytes} B) written to flash')
+                    self.logger.info(f'File {file_name} ({written_bytes} B) written to flash')
 
         uos.remove(self.release_tar_name)
         return True
