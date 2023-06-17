@@ -9,12 +9,17 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
 
+    outputs:
+      release_created: ${{ steps.release.outputs.releases_created }}
+      upload_url: ${{ steps.release.outputs.upload_url }}
+
     permissions:
       contents: write
       pull-requests: write
 
     steps:
       - uses: GoogleCloudPlatform/release-please-action@v3
+        id: release
         with:
           release-type: simple
           bump-minor-pre-major: true
