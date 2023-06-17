@@ -4,7 +4,7 @@ import uasyncio as asyncio
 from mqtt_as import MQTTClient, config
 from uota import UOta
 
-from cabinet import cabinet
+from cabinet import cabinet, settings
 from utils import singleton
 from app import secrets
 
@@ -31,6 +31,11 @@ SWITCH_COMMAND_TOPIC = "projector_cabinet/switch/set"
 TEMP_DISCOVERY_TOPIC = "homeassistant/sensor/projector_cabinet/temp/config"
 TEMP_STATE_TOPIC = "projector_cabinet/temp/state"
 
+# Actuator target
+TARGET_DISCOVERY_TOPIC = "homeassistant/number/projector_cabinet/target/config"
+TARGET_STATE_TOPIC = "projector_cabinet/target/state"
+TARGET_COMMAND_TOPIC = "projector_cabinet/target/set"
+
 # Firmware update
 FW_DISCOVERY_TOPIC = "homeassistant/update/projector_cabinet/fw/config"
 FW_STATE_TOPIC = "projector_cabinet/fw/state"
@@ -56,6 +61,7 @@ class MQTT:
         self._cabinet = cabinet.Cabinet()
         self._state_loops = []
         self._updater = UOta(SRC_REPO, logger=logging.getLogger('UOta'))
+        self._settings = settings.PersistentSettings()
         self._topics_commands_mapping = {
             SWITCH_COMMAND_TOPIC: self._handle_switch_command,
             FW_COMMAND_TOPIC: self._handle_fw_command
@@ -76,6 +82,10 @@ class MQTT:
         if msg == "install" and self._updater.download_update():
             self._logger.info('Received install new firmware command and new version is available. Marking for install and restarting.')
             machine.reset()
+
+    async def _handle_target_command(self, msg):
+        self._logger.info(f"Setting new extension target: {msg}cm")
+        self._settings.actuator_target = int(msg)
 
     async def _messages(self):
         async for topic, msg, retained in self._client.queue:
@@ -105,8 +115,10 @@ class MQTT:
             await self._announce_service_discovery()
             await self._client.subscribe(SWITCH_COMMAND_TOPIC, 1)
             await self._client.subscribe(FW_COMMAND_TOPIC, 1)
+            await self._client.subscribe(TARGET_COMMAND_TOPIC, 1)
             await self._client.publish(CABINET_AVAILABILITY_TOPIC, "online")
             await self._client.publish(SWITCH_STATE_TOPIC, "ON" if self._cabinet.is_on() else "OFF")
+            await self._client.publish(TARGET_STATE_TOPIC, self._settings.actuator_target)
             self._state_loops.append(asyncio.create_task(self._read_temp()))
             self._state_loops.append(asyncio.create_task(self._read_fw_version()))
 
@@ -148,6 +160,22 @@ class MQTT:
         }
         self._logger.info(f'Announcing cabinet capability on topic: {TEMP_DISCOVERY_TOPIC}')
         await self._client.publish(TEMP_DISCOVERY_TOPIC, ujson.dumps(temp_discovery_payload))
+
+        target_discovery_payload = {
+            "name": "Extension target",
+            "unique_id": "projector_cabinet_target",
+            "device_class": "distance",
+            "min": "0",
+            "max": "200",
+            "step": "1",
+            "unit_of_measurement": "cm",
+            "state_topic": TARGET_STATE_TOPIC,
+            "command_topic": TARGET_COMMAND_TOPIC,
+            "availability_topic": CABINET_AVAILABILITY_TOPIC,
+            "device": DEVICE_DEFINITION,
+        }
+        self._logger.info(f'Announcing cabinet capability on topic: {TARGET_DISCOVERY_TOPIC}')
+        await self._client.publish(TARGET_DISCOVERY_TOPIC, ujson.dumps(target_discovery_payload))
 
         update_discovery_payload = {
             "name": "Cabinet's device update",

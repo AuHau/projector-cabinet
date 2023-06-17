@@ -80,7 +80,10 @@ class Logger:
 
         if level >= (self.level or _level):
             not _syslog_send_all and _send_to_syslog(level, msg)
-            _stream.write("[%s][%s]" % (self._level_str(level), self.name))
+            if self.name is None:
+                _stream.write("[%s]" % (self._level_str(level)))
+            else:
+                _stream.write("[%s][%s]" % (self._level_str(level), self.name))
             print(msg, file=_stream)
 
     def debug(self, msg, *args):
@@ -126,6 +129,10 @@ def info(msg, *args):
 
 def debug(msg, *args):
     getLogger(None).debug(msg, *args)
+
+
+def error(msg, *args):
+    getLogger(None).error(msg, *args)
 
 
 def basicConfig(level=INFO, filename=None, stream=None, format=None, syslog=None, syslog_send_all=True):
