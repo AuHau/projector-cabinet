@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/AuHau/projector-cabinet/compare/v0.1.3...v0.1.4) (2023-06-17)
+
+
+### Bug Fixes
+
+* builded asset source name ([9e7e39e](https://github.com/AuHau/projector-cabinet/commit/9e7e39e49075fb527f5c02b765ce32e60e14f1e8))
+
 ## [0.1.3](https://github.com/AuHau/projector-cabinet/compare/v0.1.2...v0.1.3) (2023-06-17)
 
 
