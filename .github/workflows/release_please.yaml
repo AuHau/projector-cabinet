@@ -26,6 +26,8 @@ jobs:
 
   mpy-builder:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     needs: release-please
     if: needs.release-please.outputs.release_created == 'true'
     steps:

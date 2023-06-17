@@ -87,7 +87,7 @@ class UOta:
             response.close()
             return None
 
-
+        version = release_json['tag_name'].replace("v", "")
         self.logger.info(f"Found latest release with version: {release_json['tag_name']}")
 
         try:
