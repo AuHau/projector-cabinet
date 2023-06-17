@@ -33,7 +33,7 @@ class Logging:
 
 
 class UOta:
-    def __init__(self, github_repo, release_tar_name="source.tar.gz", logger=None, version_file='.version',
+    def __init__(self, github_repo, release_tar_name="source.tar.gz", logger=None, version_file='version.txt',
                  excluded_files=None):
         self.repo = github_repo.rstrip('/').replace('https://github.com/', '')
         self.release_tar_name = release_tar_name
@@ -86,6 +86,8 @@ class UOta:
             self.logger.debug(f"Response content: {response.text}")
             response.close()
             return None
+
+        self.logger.info(f"Found latest release with version: {release_json['tag_name']}")
 
         try:
             release_asset = next(filter(lambda asset: asset["name"] == self.release_tar_name, release_json["assets"]))

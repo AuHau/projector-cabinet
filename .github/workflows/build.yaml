@@ -16,7 +16,7 @@ jobs:
       - run: |
           find . -type f -name '*.py' -exec mpy-cross "{}" \;
           find . -type f -name '*.py' -exec rm "{}" \;
-          rm -rf .git
+          rm -rf .git _docs .gitignore .github README.md
           tar -czf source.tar.gz *
 
       - name: Upload Release Asset
