@@ -42,11 +42,11 @@ def check_for_update():
 
 def set_global_exception():
     def handle_exception(loop, context):
-        import sys
+        import sys, machine
         import ulogging as logging
         sys.print_exception(context["exception"])
         logging.error(f"Unhandled exception! {context['exception']}")
-        sys.exit()
+        machine.reset()
 
     loop = asyncio.get_event_loop()
     loop.set_exception_handler(handle_exception)

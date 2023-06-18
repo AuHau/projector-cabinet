@@ -25,6 +25,7 @@ class Cabinet:
         self._usb_trigger.off()
 
         self._fan = Fan()
+        self._fan.off()
 
         self._temp = ds18x20.DS18X20(onewire.OneWire(machine.Pin(settings.TEMP_PIN)))
         self._temp_rom = None

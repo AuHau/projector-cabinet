@@ -20,7 +20,7 @@ class Fan:
 
     def set(self, duty_cycle):
         self.duty_cycle = duty_cycle
-        self._pwm.duty_u16((self.duty_cycle * MAX_DUTY_VALUE)//100)
+        self._pwm.duty_u16(((self.duty_cycle * MAX_DUTY_VALUE)//100)-1)
 
     def off(self):
         self.duty_cycle = 0
