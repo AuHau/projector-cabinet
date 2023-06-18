@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.0](https://github.com/AuHau/projector-cabinet/compare/v0.1.5...v0.2.0) (2023-06-18)
+
+
+### Features
+
+* **mqtt:** extension target configuration ([f5e87b5](https://github.com/AuHau/projector-cabinet/commit/f5e87b5617057703612a36bc812b0418c790dd0a))
+* **mqtt:** fans configuration ([5a57b42](https://github.com/AuHau/projector-cabinet/commit/5a57b42f79fea2eea04af359a79ac7d08bdff45d))
+
+
+### Bug Fixes
+
+* **fan:** off resets duty cycle ([2952681](https://github.com/AuHau/projector-cabinet/commit/2952681409744ba1f1e988e2f01610850ec01ed6))
+* revert custom tar and fix tarfile ([b5f4f8b](https://github.com/AuHau/projector-cabinet/commit/b5f4f8b6b115490de6233753be86939c8b0f6fb9))
+
 ## [0.1.5](https://github.com/AuHau/projector-cabinet/compare/v0.1.4...v0.1.5) (2023-06-17)
 
 
