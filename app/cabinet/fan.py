@@ -23,4 +23,5 @@ class Fan:
         self._pwm.duty_u16((self.duty_cycle * MAX_DUTY_VALUE)//100)
 
     def off(self):
+        self.duty_cycle = 0
         self._pwm.duty_u16(0)
