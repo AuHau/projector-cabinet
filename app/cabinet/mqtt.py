@@ -4,7 +4,7 @@ import uasyncio as asyncio
 from mqtt_as import MQTTClient, config
 from uota import UOta
 
-from cabinet import cabinet, settings, fan
+from cabinet import cabinet, settings, fan, actuator
 from utils import singleton
 from app import secrets
 
@@ -17,6 +17,7 @@ DEVICE_DEFINITION = {
     "identifiers": ["cabinet_device"]
 }
 
+EXTENSION_STATE_INTERVAL = 1200
 TEMP_STATE_INTERVAL = 2000
 FAN_STATE_INTERVAL = 2000
 # FW_VERSIONS_STATE_INTERVAL = 15*60*1000
@@ -36,6 +37,11 @@ TEMP_STATE_TOPIC = "projector_cabinet/temp/state"
 TARGET_DISCOVERY_TOPIC = "homeassistant/number/projector_cabinet/target/config"
 TARGET_STATE_TOPIC = "projector_cabinet/target/state"
 TARGET_COMMAND_TOPIC = "projector_cabinet/target/set"
+
+# Current actuator's extension
+EXTENSION_DISCOVERY_TOPIC = "homeassistant/number/projector_cabinet/extension/config"
+EXTENSION_STATE_TOPIC = "projector_cabinet/extension/state"
+EXTENSION_COMMAND_TOPIC = "projector_cabinet/extension/set"
 
 # Projector's fans
 FANS_DISCOVERY_TOPIC = "homeassistant/fan/projector_cabinet/fans/config"
@@ -73,6 +79,7 @@ class MQTT:
             SWITCH_COMMAND_TOPIC: self._handle_switch_command,
             FW_COMMAND_TOPIC: self._handle_fw_command,
             TARGET_COMMAND_TOPIC: self._handle_target_command,
+            EXTENSION_COMMAND_TOPIC: self._handle_extension_command,
             FANS_COMMAND_TOPIC: self._handle_fans_command,
             FANS_SPEED_COMMAND_TOPIC: self._handle_fans_command,
         }
@@ -82,6 +89,7 @@ class MQTT:
         self._updater = UOta(SRC_REPO, logger=logging.getLogger('UOta'))
         self._settings = settings.PersistentSettings()
         self._fan = fan.Fan()
+        self._actuator = actuator.Actuator()
 
     async def _handle_switch_command(self, msg):
         if msg == "ON":
@@ -103,6 +111,11 @@ class MQTT:
     async def _handle_target_command(self, msg):
         self._logger.info(f"Setting new extension target: {msg}cm")
         self._settings.actuator_target = int(msg)
+
+    async def _handle_extension_command(self, msg):
+        self._logger.info(f"Move to extension: {msg}cm")
+        await self._actuator.go_to(int(msg))
+        await self._client.publish(EXTENSION_STATE_TOPIC, str(self._actuator.get_position()))
 
     async def _handle_fans_command(self, msg):
         if msg == "ON":
@@ -144,6 +157,7 @@ class MQTT:
             await self._client.subscribe(SWITCH_COMMAND_TOPIC, 1)
             await self._client.subscribe(FW_COMMAND_TOPIC, 1)
             await self._client.subscribe(TARGET_COMMAND_TOPIC, 1)
+            await self._client.subscribe(EXTENSION_COMMAND_TOPIC, 1)
             await self._client.subscribe(FANS_COMMAND_TOPIC, 1)
             await self._client.subscribe(FANS_SPEED_COMMAND_TOPIC, 1)
             await self._client.publish(CABINET_AVAILABILITY_TOPIC, "online")
@@ -152,11 +166,17 @@ class MQTT:
             self._state_loops.append(asyncio.create_task(self._read_temp()))
             self._state_loops.append(asyncio.create_task(self._read_fw_version()))
             self._state_loops.append(asyncio.create_task(self._read_fans_duty_cycle()))
+            self._state_loops.append(asyncio.create_task(self._read_extension()))
 
     async def _read_temp(self):  # send temperature data
         while True:
             await self._client.publish(TEMP_STATE_TOPIC, str(await self._cabinet.get_temp()))
             await asyncio.sleep_ms(TEMP_STATE_INTERVAL)
+
+    async def _read_extension(self):  # send current actuator's extension
+        while True:
+            await self._client.publish(EXTENSION_STATE_TOPIC, str(self._actuator.get_position()))
+            await asyncio.sleep_ms(EXTENSION_STATE_INTERVAL)
 
     async def _read_fans_duty_cycle(self):  # send fans data
         while True:
@@ -214,6 +234,23 @@ class MQTT:
         }
         self._logger.info(f'Announcing cabinet capability on topic: {TARGET_DISCOVERY_TOPIC}')
         await self._client.publish(TARGET_DISCOVERY_TOPIC, ujson.dumps(target_discovery_payload))
+
+        extension_discovery_payload = {
+            "name": "Current extension",
+            "unique_id": "projector_cabinet_extension",
+            "device_class": "distance",
+            "min": "0",
+            "max": "200",
+            "step": "1",
+            "mode": "slider",
+            "unit_of_measurement": "cm",
+            "state_topic": EXTENSION_STATE_TOPIC,
+            "command_topic": EXTENSION_COMMAND_TOPIC,
+            "availability_topic": CABINET_AVAILABILITY_TOPIC,
+            "device": DEVICE_DEFINITION,
+        }
+        self._logger.info(f'Announcing cabinet capability on topic: {EXTENSION_DISCOVERY_TOPIC}')
+        await self._client.publish(EXTENSION_DISCOVERY_TOPIC, ujson.dumps(extension_discovery_payload))
 
         fans_discovery_payload = {
             "name": "Cabinet fans",
