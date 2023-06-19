@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/AuHau/projector-cabinet/compare/v0.2.1...v0.3.0) (2023-06-19)
+
+
+### Features
+
+* **mqtt:** expose actuator's extension ([5a29ce4](https://github.com/AuHau/projector-cabinet/commit/5a29ce446627cf0632ab04ef4f666a7cec7c00e0))
+
+
+### Bug Fixes
+
+* recover correct configuration when restarting after crash ([5ed0ff6](https://github.com/AuHau/projector-cabinet/commit/5ed0ff681734d7d25988c2870c71c69acecf9d1b))
+* syslog format ([484e1cb](https://github.com/AuHau/projector-cabinet/commit/484e1cbc50b07813cca8b98dd84b1062b6938779))
+
 ## [0.2.1](https://github.com/AuHau/projector-cabinet/compare/v0.2.0...v0.2.1) (2023-06-18)
 
 
