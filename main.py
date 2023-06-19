@@ -46,6 +46,7 @@ def set_global_exception():
         import ulogging as logging
         sys.print_exception(context["exception"])
         logging.error(f"Unhandled exception! {context['exception']}")
+        logging.info("Resetting the machine because of unhandled exception.")
         machine.reset()
 
     loop = asyncio.get_event_loop()
