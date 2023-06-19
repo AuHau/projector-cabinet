@@ -69,6 +69,9 @@ class Actuator:
     def is_extended(self):
         return self.position_adc_pin.read_u16() > ADC_PRECISION
 
+    def get_position(self):
+        return _convert_from_adc_to_actuators_extension(self.position_adc_pin.read_u16())
+
     async def go_back(self):
         self._log.info("Going back")
         return await self.go_to(0)

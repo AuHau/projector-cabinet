@@ -11,7 +11,11 @@ from utils import singleton
 
 TEMP_RETRIES = 4
 TEMP_RETRIES_INTERVAL = 500
-
+POSITION_TARGET_TOLERANCE_CM = 1
+"""
+Defines how much the actuator's position can be off the extension target
+to pronounce that the Cabinet is turned on
+"""
 
 @singleton
 class Cabinet:
@@ -42,8 +46,15 @@ class Cabinet:
             self._log.info(f'Found {roms[0]} temperature sensor')
             self._temp_rom = roms[0]
 
+        # This is in case of crash to recover the proper setting during booting up
+        if self.is_on():
+            asyncio.create_task(self.turn_on)
+
     def is_on(self):
-        return self._actuator.is_extended()
+        position = self._actuator.get_position()
+        target = self._settings.actuator_target
+
+        return target - POSITION_TARGET_TOLERANCE_CM < position < target + POSITION_TARGET_TOLERANCE_CM
 
     async def trigger(self):
         if self._actuator.is_extended():
