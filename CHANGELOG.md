@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/AuHau/projector-cabinet/compare/v0.3.0...v0.3.1) (2023-06-19)
+
+
+### Bug Fixes
+
+* underflow of fan pwm ([eb5e9b9](https://github.com/AuHau/projector-cabinet/commit/eb5e9b9d5d2ecf6da5a343ec5694fcccc4ab3049))
+
 ## [0.3.0](https://github.com/AuHau/projector-cabinet/compare/v0.2.1...v0.3.0) (2023-06-19)
 
 
