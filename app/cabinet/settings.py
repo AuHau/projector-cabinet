@@ -40,7 +40,7 @@ class PersistentSettings:
     as a `actuator_obstacle_current * actuator_obstacle_max_value_coefficient`
     """
 
-    actuator_obstacle_current = 450
+    actuator_obstacle_current = 600
     """
     The limit current that when actuator reaches it is most likely that there
     is some obstacle. Therefore the actuator will stop and reverse a bit. 

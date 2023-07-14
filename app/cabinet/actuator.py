@@ -8,7 +8,7 @@ from utils import singleton
 from cabinet import settings
 
 # In ADC reading unit; defines the target range
-ADC_PRECISION = 100
+ADC_PRECISION = 40
 CURRENT_SENSOR_SHUNT_OHMS = 0.1
 ACTUATOR_TIMEOUT = 20_000  # In milliseconds
 MAX_ADC_VALUE = pow(2, 16)
@@ -115,10 +115,11 @@ class Actuator:
 
         if where_to_move == MovingDirection.FORWARD:
             self._go_forward()
+            await self.position_adc(adc_target - ADC_PRECISION, MAX_ADC_VALUE)
         elif where_to_move == MovingDirection.BACKWARD:
             self._go_back()
+            await self.position_adc(0, adc_target + ADC_PRECISION)
 
-        await self.position_adc(adc_target - ADC_PRECISION, adc_target + ADC_PRECISION)
         self._log.debug(f"Finished the move {current_position}mm --> {target}mm")
         self._stop()
         finished_event.set()
@@ -155,10 +156,6 @@ class Actuator:
         self._log_obstacle.info(f"Reversing {self._settings.actuator_obstacle_reverse_distance}mm to {target_retraction}mm.")
 
         return target_retraction
-
-    def _is_in_range(self, reading):
-        return _convert_actuators_extension_to_adc(
-            self.target) + ADC_PRECISION >= reading >= _convert_actuators_extension_to_adc(self.target) - ADC_PRECISION
 
     async def _detect_obstacles(self, finished_move_event, move_task):
         if not self._settings.actuator_obstacle_current:

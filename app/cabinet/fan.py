@@ -19,10 +19,11 @@ class Fan:
 
     def set(self, duty_cycle):
         self.duty_cycle = duty_cycle
-
+        self._log.info(f'Setting fan to {duty_cycle}%')
         pwm = ((self.duty_cycle * MAX_DUTY_VALUE)//100)-1
         self._pwm.duty_u16(pwm if pwm > 0 else 0)
 
     def off(self):
+        self._log.info('Setting fan to 0%')
         self.duty_cycle = 0
         self._pwm.duty_u16(0)

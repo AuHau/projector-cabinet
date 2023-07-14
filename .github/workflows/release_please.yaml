@@ -39,7 +39,7 @@ jobs:
       - run: |
           find . -type f -name '*.py' -exec mpy-cross "{}" \;
           find . -type f -name '*.py' -exec rm "{}" \;
-          rm -rf .git _docs .gitignore .github README.md CHANGELOG.md
+          rm -rf .git docs .gitignore .github README.md CHANGELOG.md
           tar -czf source.tar.gz *
 
       - name: Upload Release Asset

@@ -1,3 +1,4 @@
+import math
 import ujson, machine
 import ulogging as logging
 import uasyncio as asyncio
@@ -115,7 +116,7 @@ class MQTT:
     async def _handle_extension_command(self, msg):
         self._logger.info(f"Move to extension: {msg}cm")
         await self._actuator.go_to(int(msg))
-        await self._client.publish(EXTENSION_STATE_TOPIC, str(self._actuator.get_position()))
+        await self._client.publish(EXTENSION_STATE_TOPIC, str(math.floor(self._actuator.get_position())))
 
     async def _handle_fans_command(self, msg):
         if msg == "ON":
@@ -175,7 +176,7 @@ class MQTT:
 
     async def _read_extension(self):  # send current actuator's extension
         while True:
-            await self._client.publish(EXTENSION_STATE_TOPIC, str(self._actuator.get_position()))
+            await self._client.publish(EXTENSION_STATE_TOPIC, str(math.floor(self._actuator.get_position())))
             await asyncio.sleep_ms(EXTENSION_STATE_INTERVAL)
 
     async def _read_fans_duty_cycle(self):  # send fans data
