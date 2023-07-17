@@ -91,16 +91,23 @@ You can download its export from EasyEDA [here](./docs/easda-schema.json).
 
 Some pictures of prototyping and final assembly:
 
-| <a href="docs/img/prototyping-done.jpeg"><img src="docs/img/prototyping-done.jpeg" width="200"></a>           | <a href="docs/img/assambled-board.jpeg"><img src="docs/img/assambled-board.jpeg" width="200"></a>           | 
-|---------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
-| <a href="docs/img/ready-to-be-installed.jpeg"><img src="docs/img/ready-to-be-installed.jpeg" width="200"></a> | <a href="docs/img/electronic-installed.jpeg"><img src="docs/img/electronic-installed.jpeg" width="200"></a> |
+<table width="100%">
+  <tr>
+  <td width="50%"><a href="docs/img/prototyping-done.jpeg"><img src="docs/img/prototyping-done.jpeg" width="300"></a>  </td>
+  <td width="50%"><a href="docs/img/assambled-board.jpeg"><img src="docs/img/assambled-board.jpeg" width="300"></a> </td>
+  </tr>
+  <tr>
+  <td width="50%"><a href="docs/img/ready-to-be-installed.jpeg"><img src="docs/img/ready-to-be-installed.jpeg" width="300"></a></td>
+  <td width="50%"><a href="docs/img/electronic-installed.jpeg"><img src="docs/img/electronic-installed.jpeg" width="300"></a></td>
+  </tr>
+</table>
 
 ## Home Assistant
 
 This project heavily relies on Home Assistant for orchestration and integration. Bellow you can see the overview and
 capabilities that are exposed over Home Assistant:
 
-[![Home Assistant card](docs/img/homeassistant.png | width=500)](docs/img/homeassistant.png)
+<a href="docs/img/homeassistant.png"><img src="docs/img/homeassistant.png" width="500"></a>
 
 ## Reproducing the project
 
