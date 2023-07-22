@@ -40,12 +40,23 @@ def check_for_update():
         gc.collect()
 
 
+def _get_traceback(exception):
+    import io, sys
+    string_file = io.StringIO()
+    sys.print_exception(exception, file=string_file)
+    return string_file.getvalue()
+
+
 def set_global_exception():
     def handle_exception(loop, context):
         import sys, machine
         import ulogging as logging
-        sys.print_exception(context["exception"])
-        logging.error(f"Unhandled exception! {context['exception']}")
+        exc = context['exception']
+        sys.print_exception(exc)
+        logging.error(f"Unhandled exception! {exc}")
+
+        formatted_traceback = _get_traceback(exc).replace('\n', ' ==> ')
+        logging.debug(f"Traceback: {formatted_traceback}")
         logging.info("Resetting the machine because of unhandled exception.")
         machine.reset()
 

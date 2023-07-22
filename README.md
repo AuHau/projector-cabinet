@@ -138,5 +138,9 @@ SYSLOG_PORT = ""
 ### OTA updates
 
 OTA updates are sourced from GitHub Releases. For creating those there is Release-Please action which creates
-Release PR that when you merge it create new release. For updating the firmware you need to press in Home Assistant
-"Install" button on the Firmware entity.
+Release PR that when you merge it create new release. With the new release a new firmware resource is build
+with CI, which compiles the Python files `.py` into [`.mpy` files](https://docs.micropython.org/en/latest/reference/mpyfiles.html). 
+
+For updating the firmware you need to press in Home Assistant "Install" button on the Firmware entity.
+
+You need to point for the OTA updates to your forked repo in the `/main.py` file you need to tweak the `OTA_REPO` variable.

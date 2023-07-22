@@ -36,9 +36,12 @@ jobs:
         with:
           python-version: '3.10'
       - run: pip install mpy-cross
+        # We perform the `mv` because Micropython ignores the `.mpy` file for the `/main.py` file. It has to stay clean .py file
       - run: |
+          mv main.py main.tmp
           find . -type f -name '*.py' -exec mpy-cross "{}" \;
           find . -type f -name '*.py' -exec rm "{}" \;
+          mv main.tmp main.py
           rm -rf .git docs .gitignore .github README.md CHANGELOG.md
           tar -czf source.tar.gz *
 
