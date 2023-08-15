@@ -48,7 +48,7 @@ class Cabinet:
 
         # This is in case of crash to recover the proper setting during booting up
         if self.is_on():
-            asyncio.create_task(self.turn_on)
+            asyncio.create_task(self.turn_on())
 
     def is_on(self):
         position = self._actuator.get_position()
