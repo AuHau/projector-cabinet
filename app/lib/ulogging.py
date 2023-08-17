@@ -50,7 +50,11 @@ def _send_to_syslog(level, msg, facility=F_USER):
         return
 
     data = "<%d>projector_cabinet: %s" % (_syslog_mapping.get(level) + (facility << 3), msg)
-    _socket.send(data.encode())
+
+    try:
+        _socket.send(data.encode())
+    except Exception as e:
+        error(f"Error while sending logs to syslog: {e}")
 
 
 class Logger:
