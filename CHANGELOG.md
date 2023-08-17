@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.3](https://github.com/AuHau/projector-cabinet/compare/v0.3.2...v0.3.3) (2023-08-17)
+
+
+### Bug Fixes
+
+* crash recovery when cabinet is expanded bug ([7252070](https://github.com/AuHau/projector-cabinet/commit/7252070fb80ca0bdc44d8f70a6c15a0ad158a62b))
+* don't error out when syslog is not available ([ba74dcd](https://github.com/AuHau/projector-cabinet/commit/ba74dcdbe9fcf40f944af5f2d394f65ed3df3cab))
+
 ## [0.3.2](https://github.com/AuHau/projector-cabinet/compare/v0.3.1...v0.3.2) (2023-07-22)
 
 
